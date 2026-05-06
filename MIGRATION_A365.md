@@ -427,6 +427,36 @@ the filter logic to any criteria (span name, attributes, etc.).
 | `ENABLE_OTLP_EXPORTER` | `OTEL_EXPORTER_OTLP_ENDPOINT` | Use standard OTel env var instead |
 | `ENABLE_OBSERVABILITY` | `ENABLE_OBSERVABILITY` | Same — master switch for A365 scope classes to emit spans |
 
+## Auth Scopes — Breaking Change
+
+> **⚠️ Breaking change:** The default observability authentication scope changed
+> from `https://api.powerplatform.com/.default` (old A365 SDK) to
+> `api://9b975845-388f-4429-889e-eab1ef63949c/Agent365.Observability.OtelWrite`.
+> If you previously hardcoded the old scope, you will get auth failures after
+> migration. You must also grant the `Agent365.Observability.OtelWrite`
+> permission — see [HTTP 403 after upgrading](#http-403-after-upgrading).
+
+Do **not** hardcode scope strings. Instead, use the runtime helper to get the
+correct scope automatically:
+
+```python
+from microsoft.opentelemetry.a365.runtime import get_observability_authentication_scope
+
+scopes = get_observability_authentication_scope()  # returns list[str]
+```
+
+If you need to override the scope for testing, use the
+`a365_observability_scope_override` kwarg or the
+`A365_OBSERVABILITY_SCOPE_OVERRIDE` environment variable:
+
+```bash
+# Linux / macOS
+export A365_OBSERVABILITY_SCOPE_OVERRIDE="api://test/.default"
+
+# Windows PowerShell
+$env:A365_OBSERVABILITY_SCOPE_OVERRIDE = "api://test/.default"
+```
+
 ## Full Migration Example
 
 ```python
