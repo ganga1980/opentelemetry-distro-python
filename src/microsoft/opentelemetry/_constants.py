@@ -113,5 +113,16 @@ A365_SCHEDULED_DELAY_MS_ARG = "a365_scheduled_delay_ms"
 A365_EXPORTER_TIMEOUT_MS_ARG = "a365_exporter_timeout_ms"
 A365_MAX_EXPORT_BATCH_SIZE_ARG = "a365_max_export_batch_size"
 
+# --- GenAI Main Agent Constants ---
+
+# Target attribute keys written by the GenAI main-agent processors so that
+# downstream telemetry (spans + logs) is attributed to the user-facing
+# ("main") agent rather than internal sub-agents in a multi-agent system.
+GEN_AI_MAIN_AGENT_NAME_KEY = "microsoft.gen_ai.main_agent.name"
+GEN_AI_MAIN_AGENT_ID_KEY = "microsoft.gen_ai.main_agent.id"
+GEN_AI_MAIN_AGENT_VERSION_KEY = "microsoft.gen_ai.main_agent.version"
+GEN_AI_MAIN_AGENT_CONVERSATION_ID_KEY = "microsoft.gen_ai.main_agent.conversation_id"
+GEN_AI_MAIN_AGENT_ATTRIBUTE_PREFIX = "microsoft.gen_ai.main_agent."
+
 # --- Version propagation for distro to exporter ---
 MICROSOFT_OPENTELEMETRY_VERSION_ENV = "microsoft_opentelemetry_version"

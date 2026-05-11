@@ -1082,5 +1082,90 @@ class TestA365DisablesWebInstrumentations(unittest.TestCase):
             )
 
 
+class TestGenAIMainAgentProcessorRegistration(unittest.TestCase):
+    """The GenAI main-agent processors must register only when Azure Monitor is enabled."""
+
+    def _captured_kwargs(self, append_mock):
+        otel_kwargs, _ = append_mock.call_args[0]
+        return otel_kwargs
+
+    @patch("microsoft.opentelemetry._distro._append_azure_monitor_components", return_value=(None, None, None))
+    def test_processors_registered_when_azure_monitor_enabled(self, append_mock):
+        from microsoft.opentelemetry._genai.main_agent import (
+            GenAIMainAgentLogRecordProcessor,
+            GenAIMainAgentSpanProcessor,
+        )
+
+        use_microsoft_opentelemetry(
+            azure_monitor_connection_string=TEST_CONNECTION_STRING,
+            enable_azure_monitor=True,
+        )
+
+        otel_kwargs = self._captured_kwargs(append_mock)
+        span_processors = otel_kwargs.get("span_processors") or []
+        log_processors = otel_kwargs.get("log_record_processors") or []
+        self.assertTrue(span_processors and isinstance(span_processors[0], GenAIMainAgentSpanProcessor))
+        self.assertTrue(log_processors and isinstance(log_processors[0], GenAIMainAgentLogRecordProcessor))
+
+    @patch("microsoft.opentelemetry._distro._setup_logging")
+    @patch("microsoft.opentelemetry._distro._setup_metrics")
+    @patch("microsoft.opentelemetry._distro._setup_tracing")
+    def test_processors_not_registered_when_azure_monitor_disabled(
+        self, tracing_mock, metrics_mock, logging_mock
+    ):
+        from microsoft.opentelemetry._genai.main_agent import (
+            GenAIMainAgentLogRecordProcessor,
+            GenAIMainAgentSpanProcessor,
+        )
+
+        use_microsoft_opentelemetry()
+
+        otel_kwargs = tracing_mock.call_args[0][1]
+        span_processors = otel_kwargs.get("span_processors") or []
+        log_processors = otel_kwargs.get("log_record_processors") or []
+        self.assertFalse(any(isinstance(p, GenAIMainAgentSpanProcessor) for p in span_processors))
+        self.assertFalse(any(isinstance(p, GenAIMainAgentLogRecordProcessor) for p in log_processors))
+
+    @patch("microsoft.opentelemetry._distro._append_a365_components")
+    @patch("microsoft.opentelemetry._distro._setup_logging")
+    @patch("microsoft.opentelemetry._distro._setup_metrics")
+    @patch("microsoft.opentelemetry._distro._setup_tracing")
+    def test_processors_not_registered_for_a365_only(
+        self, tracing_mock, metrics_mock, logging_mock, a365_mock
+    ):
+        from microsoft.opentelemetry._genai.main_agent import (
+            GenAIMainAgentLogRecordProcessor,
+            GenAIMainAgentSpanProcessor,
+        )
+
+        use_microsoft_opentelemetry(enable_a365=True)
+
+        otel_kwargs = tracing_mock.call_args[0][1]
+        span_processors = otel_kwargs.get("span_processors") or []
+        log_processors = otel_kwargs.get("log_record_processors") or []
+        self.assertFalse(any(isinstance(p, GenAIMainAgentSpanProcessor) for p in span_processors))
+        self.assertFalse(any(isinstance(p, GenAIMainAgentLogRecordProcessor) for p in log_processors))
+
+    @patch("microsoft.opentelemetry._distro._append_azure_monitor_components", return_value=(None, None, None))
+    def test_processors_skipped_when_signals_disabled(self, append_mock):
+        from microsoft.opentelemetry._genai.main_agent import (
+            GenAIMainAgentLogRecordProcessor,
+            GenAIMainAgentSpanProcessor,
+        )
+
+        use_microsoft_opentelemetry(
+            azure_monitor_connection_string=TEST_CONNECTION_STRING,
+            enable_azure_monitor=True,
+            disable_tracing=True,
+            disable_logging=True,
+        )
+
+        otel_kwargs = self._captured_kwargs(append_mock)
+        span_processors = otel_kwargs.get("span_processors") or []
+        log_processors = otel_kwargs.get("log_record_processors") or []
+        self.assertFalse(any(isinstance(p, GenAIMainAgentSpanProcessor) for p in span_processors))
+        self.assertFalse(any(isinstance(p, GenAIMainAgentLogRecordProcessor) for p in log_processors))
+
+
 if __name__ == "__main__":
     unittest.main()
