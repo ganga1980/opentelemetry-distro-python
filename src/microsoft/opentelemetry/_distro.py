@@ -84,6 +84,9 @@ from microsoft.opentelemetry._utils import (
 )
 from microsoft.opentelemetry._version import VERSION
 
+os.environ.setdefault(MICROSOFT_OPENTELEMETRY_VERSION_ENV, VERSION)
+
+# pylint: disable=wrong-import-position
 import azure.monitor.opentelemetry.exporter._utils as _exporter_utils
 from azure.monitor.opentelemetry.exporter.statsbeat._statsbeat_metrics import (
     _StatsbeatMetrics,

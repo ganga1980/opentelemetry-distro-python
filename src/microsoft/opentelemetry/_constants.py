@@ -125,4 +125,4 @@ GEN_AI_MAIN_AGENT_CONVERSATION_ID_KEY = "microsoft.gen_ai.main_agent.conversatio
 GEN_AI_MAIN_AGENT_ATTRIBUTE_PREFIX = "microsoft.gen_ai.main_agent."
 
 # --- Version propagation for distro to exporter ---
-MICROSOFT_OPENTELEMETRY_VERSION_ENV = "microsoft_opentelemetry_version"
+MICROSOFT_OPENTELEMETRY_VERSION_ENV = "MICROSOFT_OPENTELEMETRY_VERSION"
