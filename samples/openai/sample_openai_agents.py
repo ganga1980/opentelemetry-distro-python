@@ -28,12 +28,40 @@ from microsoft.opentelemetry import use_microsoft_opentelemetry
 
 os.environ.setdefault("OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT", "SPAN_AND_EVENT")
 os.environ.setdefault("OTEL_SEMCONV_STABILITY_OPT_IN", "gen_ai_latest_experimental")
-# Connection string can also be passed directly:
-# azure_monitor_connection_string="InstrumentationKey=..."
+
+# ── Option A: Azure Monitor / OTLP ──────────────────────────────
+# Uses the upstream opentelemetry-instrumentation-openai-agents-v2
+# instrumentor.  You can pass agent-specific configuration via
+# instrumentation_options (agent_id, agent_name, capture_message_content, etc.).
 use_microsoft_opentelemetry(
     enable_azure_monitor=True,
     azure_monitor_connection_string=os.environ.get("APPLICATIONINSIGHTS_CONNECTION_STRING", ""),
+    instrumentation_options={
+        "openai_agents": {
+            "enabled": True,
+            # Optional: set static agent identity on all OpenAI Agents spans.
+            # These appear as gen_ai.agent.* attributes in your telemetry.
+            "agent_id": "travel-concierge-001",
+            "agent_name": "Travel_Concierge",
+            # Capture prompts and completions in spans and events.
+            # Can also be set via OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT env var.
+            "capture_message_content": "SPAN_AND_EVENT",
+        },
+        # The "openai" instrumentor (chat completions) only accepts
+        # tracer_provider / logger_provider / meter_provider; it has
+        # no agent-specific configuration.
+    },
 )
+
+# ── Option B: A365 ──────────────────────────────────────────────
+# When enable_a365=True the distro uses the A365-specific instrumentor
+# for openai_agents.  No extra instrumentation_options are needed;
+# agent identity and message content are captured automatically from
+# the Agents SDK runtime context.
+#
+# use_microsoft_opentelemetry(
+#     enable_a365=True,
+# )
 
 
 @function_tool

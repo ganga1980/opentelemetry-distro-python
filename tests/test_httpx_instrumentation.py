@@ -143,5 +143,77 @@ class TestHttpxSpanGeneration(unittest.TestCase):
         self.assertEqual(len(spans), 0, "Expected no spans after uninstrument()")
 
 
+class TestHttpxHookForwarding(unittest.TestCase):
+    """Verify request_hook / response_hook kwargs are honoured at runtime."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.server = HTTPServer(("127.0.0.1", 0), _TestHandler)
+        cls.port = cls.server.server_address[1]
+        cls.server_thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
+        cls.server_thread.start()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.server.shutdown()
+        cls.server_thread.join(timeout=5)
+        cls.server.server_close()
+
+    def setUp(self):
+        self.exporter = InMemorySpanExporter()
+        self.provider = TracerProvider(resource=Resource({"service.name": "test"}))
+        self.provider.add_span_processor(SimpleSpanProcessor(self.exporter))
+        self.instrumentor = HTTPXClientInstrumentor()
+        if self.instrumentor.is_instrumented_by_opentelemetry:
+            self.instrumentor.uninstrument()
+
+    def tearDown(self):
+        if self.instrumentor.is_instrumented_by_opentelemetry:
+            self.instrumentor.uninstrument()
+        self.provider.shutdown()
+
+    def test_request_hook_fires(self):
+        """request_hook receives the span and can set custom attributes."""
+        hook_called = []
+
+        def my_request_hook(span, request_info):
+            hook_called.append(True)
+            span.set_attribute("test.hook", "request")
+
+        self.instrumentor.instrument(
+            tracer_provider=self.provider,
+            request_hook=my_request_hook,
+        )
+
+        with httpx.Client() as client:
+            client.get(f"http://127.0.0.1:{self.port}/status")
+
+        self.provider.force_flush()
+        self.assertTrue(hook_called, "request_hook was never called")
+        spans = self.exporter.get_finished_spans()
+        self.assertEqual(spans[0].attributes.get("test.hook"), "request")
+
+    def test_response_hook_fires(self):
+        """response_hook receives span + response and can set custom attributes."""
+        hook_called = []
+
+        def my_response_hook(span, request_info, response_info):
+            hook_called.append(True)
+            span.set_attribute("test.status", response_info.status_code)
+
+        self.instrumentor.instrument(
+            tracer_provider=self.provider,
+            response_hook=my_response_hook,
+        )
+
+        with httpx.Client() as client:
+            client.get(f"http://127.0.0.1:{self.port}/status")
+
+        self.provider.force_flush()
+        self.assertTrue(hook_called, "response_hook was never called")
+        spans = self.exporter.get_finished_spans()
+        self.assertEqual(spans[0].attributes.get("test.status"), 200)
+
+
 if __name__ == "__main__":
     unittest.main()

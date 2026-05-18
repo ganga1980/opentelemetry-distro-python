@@ -24,7 +24,7 @@ Demonstrates the internal langchain instrumentation.
 | ---------------------------------------------------- | ---------------------------- |
 | `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` | "SPAN_AND_EVENT"             |
 | `OTEL_SEMCONV_STABILITY_OPT_IN`                      | "gen_ai_latest_experimental" |
-| `AZURE_EXPERIMENTAL_ENABLE_GENAI_TRACING             | "true"                       |
+| `AZURE_EXPERIMENTAL_ENABLE_GENAI_TRACING`            | "true"                       |
 
 **Placeholders to fill: If use azure endpoint and api key**
 

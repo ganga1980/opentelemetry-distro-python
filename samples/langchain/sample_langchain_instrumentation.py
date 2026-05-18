@@ -17,7 +17,15 @@ use_microsoft_opentelemetry(
     enable_azure_monitor=True,
     sampling_ratio=1.0,
     instrumentation_options={
-        "langchain": {"enabled": True},
+        "langchain": {
+            "enabled": True,
+            # Optional: set static agent identity on all LangChain spans.
+            # These appear as gen_ai.agent.* attributes in your telemetry.
+            # If omitted, the distro infers agent_name from LangChain's
+            # runtime metadata when available.
+            "agent_id": "travel-assistant-001",
+            "agent_name": "Travel_Assistant",
+        },
     },
 )
 
