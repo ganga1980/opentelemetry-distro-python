@@ -247,73 +247,92 @@ sequenceDiagram
 ## 4. Component View
 
 ```mermaid
-%%{init:{'theme':'base','themeVariables':{'fontFamily':'Segoe UI'}}}%%
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Segoe UI","fontSize":"18px","lineColor":"#0D47A1","edgeLabelBackground":"#FFFFFF","primaryTextColor":"#000000","clusterBkg":"#FAFAFA","clusterBorder":"#90A4AE"}}}%%
 flowchart LR
-    classDef api fill:#FFF59D,stroke:#F9A825,color:#000
-    classDef cfg fill:#E1BEE7,stroke:#6A1B9A,color:#000
-    classDef sdk fill:#B3E5FC,stroke:#0277BD,color:#000
-    classDef proc fill:#FFE0B2,stroke:#E65100,color:#000
-    classDef expAM fill:#FFCDD2,stroke:#C62828,color:#000
-    classDef expA365 fill:#D1C4E9,stroke:#4527A0,color:#000
-    classDef expOTLP fill:#B2DFDB,stroke:#00695C,color:#000
-    classDef expCon fill:#CFD8DC,stroke:#455A64,color:#000
-    classDef instr fill:#C8E6C9,stroke:#2E7D32,color:#000
+    classDef api fill:#FFF59D,stroke:#F9A825,stroke-width:3px,color:#000,font-size:18px,padding:14px
+    classDef cfg fill:#E1BEE7,stroke:#6A1B9A,stroke-width:3px,color:#000,font-size:17px,padding:12px
+    classDef sdk fill:#B3E5FC,stroke:#0277BD,stroke-width:3px,color:#000,font-size:17px,padding:12px
+    classDef proc fill:#FFE0B2,stroke:#E65100,stroke-width:3px,color:#000,font-size:17px,padding:12px
+    classDef expAM fill:#FFCDD2,stroke:#C62828,stroke-width:3px,color:#000,font-size:17px,padding:12px
+    classDef expA365 fill:#D1C4E9,stroke:#4527A0,stroke-width:3px,color:#000,font-size:17px,padding:12px
+    classDef expOTLP fill:#B2DFDB,stroke:#00695C,stroke-width:3px,color:#000,font-size:17px,padding:12px
+    classDef expCon fill:#CFD8DC,stroke:#455A64,stroke-width:3px,color:#000,font-size:17px,padding:12px
+    classDef instr fill:#C8E6C9,stroke:#2E7D32,stroke-width:3px,color:#000,font-size:17px,padding:12px
 
     Entry["use_microsoft_opentelemetry"]:::api
 
     subgraph Composition ["_distro.py"]
-      Resolver["resolve kwargs+env"]:::cfg
+      Resolver["Resolve kwargs and env"]:::cfg
       AppendOTLP["_append_otlp_components"]:::cfg
       AppendSpec["_append_spectra_components"]:::cfg
       AppendA365["_append_a365_components"]:::cfg
       AppendCon["_append_console_components"]:::cfg
       AppendAM["_append_azure_monitor_components"]:::cfg
-      SetupTrace["_setup_tracing/metrics/logging"]:::cfg
+      SetupTrace["_setup_tracing<br/>_setup_metrics<br/>_setup_logging"]:::cfg
       SetupInst["_setup_instrumentations"]:::cfg
     end
 
     subgraph TraceProvider ["TracerProvider"]
       direction TB
-      GenAIMain["GenAIMainAgentSpanProcessor<br/>(prepended when AM on)"]:::proc
-      A365Baggage["A365SpanProcessor<br/>baggage → attributes"]:::proc
-      QPSP["_QuickpulseSpanProcessor<br/>(AM live metrics)"]:::proc
-      PCSP["_PerformanceCountersSpanProcessor<br/>(AM perf counters)"]:::proc
-      A365Batch["_EnrichingBatchSpanProcessor<br/>+ span enricher"]:::proc
-      OTLPBSP["BatchSpanProcessor → OTLP HTTP"]:::proc
-      SpecBSP["BatchSpanProcessor → Spectra OTLP gRPC/HTTP"]:::proc
-      ConBSP["SimpleSpanProcessor → Console"]:::proc
-      AMBSP["BatchSpanProcessor → AzureMonitorTraceExporter"]:::proc
+      GenAIMain["GenAI MainAgent Span Processor<br/>prepended when AM on"]:::proc
+      A365Baggage["A365 Span Processor<br/>baggage to attributes"]:::proc
+      QPSP["Quickpulse Span Processor<br/>AM live metrics"]:::proc
+      PCSP["PerfCounters Span Processor<br/>AM perf counters"]:::proc
+      A365Batch["Enriching BatchSpan Processor<br/>plus span enricher"]:::proc
+      OTLPBSP["BatchSpanProcessor to OTLP HTTP"]:::proc
+      SpecBSP["BatchSpanProcessor to Spectra OTLP"]:::proc
+      ConBSP["SimpleSpanProcessor to Console"]:::proc
+      AMBSP["BatchSpanProcessor to AM Trace Exporter"]:::proc
     end
 
     subgraph Exporters
-      AMExp["AzureMonitorTraceExporter<br/>+ MetricExporter + LogExporter"]:::expAM
-      A365Exp["_Agent365Exporter<br/>(HTTPS POST + Bearer)"]:::expA365
+      AMExp["AzureMonitor Trace Exporter<br/>Metric and Log exporters"]:::expAM
+      A365Exp["Agent365 Exporter<br/>HTTPS POST plus Bearer"]:::expA365
       OTLPExp["OTLP HTTP exporters"]:::expOTLP
-      SpecExp["OTLP gRPC/HTTP (sidecar)"]:::expOTLP
+      SpecExp["OTLP gRPC or HTTP sidecar"]:::expOTLP
       ConExp["Console exporters"]:::expCon
     end
 
     subgraph Instrumentations
-      GenAIAF["AgentFrameworkInstrumentor"]:::instr
-      GenAISK["SemanticKernelInstrumentor"]:::instr
-      GenAILC["LangChainInstrumentor"]:::instr
-      GenAIOAI["OpenAI (v2) / OpenAI Agents"]:::instr
-      Web["Web/HTTP/DB instrumentors"]:::instr
+      GenAIAF["AgentFramework Instrumentor"]:::instr
+      GenAISK["SemanticKernel Instrumentor"]:::instr
+      GenAILC["LangChain Instrumentor"]:::instr
+      GenAIOAI["OpenAI v2 and OpenAI Agents"]:::instr
+      Web["Web, HTTP, DB instrumentors"]:::instr
     end
 
-    Entry --> Resolver
-    Resolver --> AppendOTLP --> AppendSpec --> AppendA365 --> AppendCon --> AppendAM
-    AppendAM --> SetupTrace --> SetupInst
+    Entry ==> Resolver
+    Resolver ==> AppendOTLP
+    AppendOTLP ==> AppendSpec
+    AppendSpec ==> AppendA365
+    AppendA365 ==> AppendCon
+    AppendCon ==> AppendAM
+    AppendAM ==> SetupTrace
+    SetupTrace ==> SetupInst
 
-    SetupInst --- GenAIAF & GenAISK & GenAILC & GenAIOAI & Web
+    SetupInst ==> GenAIAF
+    SetupInst ==> GenAISK
+    SetupInst ==> GenAILC
+    SetupInst ==> GenAIOAI
+    SetupInst ==> Web
 
-    SetupTrace --> GenAIMain --> A365Baggage --> QPSP --> PCSP --> A365Batch --> OTLPBSP --> SpecBSP --> ConBSP --> AMBSP
+    SetupTrace ==> GenAIMain
+    GenAIMain ==> A365Baggage
+    A365Baggage ==> QPSP
+    QPSP ==> PCSP
+    PCSP ==> A365Batch
+    A365Batch ==> OTLPBSP
+    OTLPBSP ==> SpecBSP
+    SpecBSP ==> ConBSP
+    ConBSP ==> AMBSP
 
-    A365Batch --> A365Exp
-    OTLPBSP --> OTLPExp
-    SpecBSP --> SpecExp
-    ConBSP --> ConExp
-    AMBSP --> AMExp
+    A365Batch ==> A365Exp
+    OTLPBSP ==> OTLPExp
+    SpecBSP ==> SpecExp
+    ConBSP ==> ConExp
+    AMBSP ==> AMExp
+
+    linkStyle default stroke:#0D47A1,stroke-width:3px,fill:none
 ```
 
 > The vertical chain inside `TracerProvider` shows **registration order**, not a strict invocation pipeline — every processor receives every span; ordering only matters for attribute‑enrichment processors that run before batch exporters serialize.
@@ -323,48 +342,61 @@ flowchart LR
 ## 5. Data Flow — A Span From Code → Backends
 
 ```mermaid
-%%{init:{'theme':'base','themeVariables':{'fontFamily':'Segoe UI'}}}%%
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Segoe UI","fontSize":"15px","lineColor":"#0D47A1","edgeLabelBackground":"#FFFFFF","primaryTextColor":"#000000"}}}%%
 flowchart LR
-    classDef src fill:#FFF59D,stroke:#F9A825,color:#000
-    classDef enrich fill:#FFE0B2,stroke:#E65100,color:#000
-    classDef batch fill:#B3E5FC,stroke:#0277BD,color:#000
-    classDef expAM fill:#FFCDD2,stroke:#C62828,color:#000
-    classDef expA365 fill:#D1C4E9,stroke:#4527A0,color:#000
-    classDef expOTLP fill:#B2DFDB,stroke:#00695C,color:#000
-    classDef expCon fill:#CFD8DC,stroke:#455A64,color:#000
-    classDef be fill:#263238,color:#FFF
+    classDef src fill:#FFF59D,stroke:#F9A825,stroke-width:2px,color:#000
+    classDef enrich fill:#FFE0B2,stroke:#E65100,stroke-width:2px,color:#000
+    classDef batch fill:#B3E5FC,stroke:#0277BD,stroke-width:2px,color:#000
+    classDef expAM fill:#FFCDD2,stroke:#C62828,stroke-width:2px,color:#000
+    classDef expA365 fill:#D1C4E9,stroke:#4527A0,stroke-width:2px,color:#000
+    classDef expOTLP fill:#B2DFDB,stroke:#00695C,stroke-width:2px,color:#000
+    classDef expCon fill:#CFD8DC,stroke:#455A64,stroke-width:2px,color:#000
+    classDef be fill:#263238,stroke:#000,stroke-width:2px,color:#FFF
 
-    App["Application code<br/>(Agent / API / DB call)"]:::src
-    Lib["Instrumented library<br/>(LangChain / AF / SK / OpenAI / HTTP)"]:::src
+    App["Application code<br/>Agent, API or DB call"]:::src
+    Lib["Instrumented library<br/>LangChain, AF, SK, OpenAI, HTTP"]:::src
     Scope["A365 Scope or<br/>SDK auto-instrumentor"]:::src
-    Span["OTel Span<br/>(start/end)"]:::src
+    Span["OTel Span<br/>start and end"]:::src
 
-    P1["GenAIMainAgentSpanProcessor<br/>main_agent.* propagation"]:::enrich
-    P2["A365SpanProcessor<br/>baggage → gen_ai.* / user.* / tenant.*"]:::enrich
-    P3["Quickpulse / PerfCounter processors<br/>(AM only)"]:::enrich
-    P4["EnrichingBatchSpanProcessor<br/>platform-specific enricher,<br/>input suppression"]:::enrich
+    P1["GenAI MainAgent Span Processor<br/>main_agent propagation"]:::enrich
+    P2["A365 Span Processor<br/>baggage to gen_ai, user, tenant attrs"]:::enrich
+    P3["Quickpulse and PerfCounter processors<br/>AM only"]:::enrich
+    P4["Enriching BatchSpan Processor<br/>platform enricher,<br/>input suppression"]:::enrich
 
     Batch["BatchSpanProcessors fan-out"]:::batch
 
-    AME["AzureMonitorTraceExporter"]:::expAM
-    A365E["_Agent365Exporter<br/>partition by (tenantId, agentId)<br/>chunk by 1MB<br/>Bearer token (FIC / DefaultAzureCredential)"]:::expA365
+    AME["AzureMonitor Trace Exporter"]:::expAM
+    A365E["Agent365 Exporter<br/>partition by tenantId, agentId<br/>chunk by 1MB<br/>Bearer token via FIC or DAC"]:::expA365
     OTLPE["OTLP HTTP"]:::expOTLP
-    SpecE["OTLP sidecar (gRPC/HTTP)"]:::expOTLP
+    SpecE["OTLP sidecar gRPC or HTTP"]:::expOTLP
     ConE["Console exporter"]:::expCon
 
-    AI[("App Insights")]:::be
-    A365B[("agent365.svc.cloud.microsoft")]:::be
-    Coll[("OTel Collector")]:::be
-    Sidecar[("Spectra sidecar")]:::be
-    Out[(stdout)]:::be
+    AI["App Insights"]:::be
+    A365B["agent365.svc.cloud.microsoft"]:::be
+    Coll["OTel Collector"]:::be
+    Sidecar["Spectra sidecar"]:::be
+    Out["stdout"]:::be
 
-    App --> Lib --> Scope --> Span
-    Span --> P1 --> P2 --> P3 --> P4 --> Batch
-    Batch --> AME --> AI
-    Batch --> A365E --> A365B
-    Batch --> OTLPE --> Coll
-    Batch --> SpecE --> Sidecar
-    Batch --> ConE --> Out
+    App ==> Lib
+    Lib ==> Scope
+    Scope ==> Span
+    Span ==> P1
+    P1 ==> P2
+    P2 ==> P3
+    P3 ==> P4
+    P4 ==> Batch
+    Batch ==> AME
+    AME ==> AI
+    Batch ==> A365E
+    A365E ==> A365B
+    Batch ==> OTLPE
+    OTLPE ==> Coll
+    Batch ==> SpecE
+    SpecE ==> Sidecar
+    Batch ==> ConE
+    ConE ==> Out
+
+    linkStyle default stroke:#0D47A1,stroke-width:3px,fill:none
 ```
 
 Key transformations applied while a span travels the pipeline:
@@ -383,13 +415,13 @@ Key transformations applied while a span travels the pipeline:
 ## 6. Agent 365 Subsystem
 
 ```mermaid
-%%{init:{'theme':'base','themeVariables':{'fontFamily':'Segoe UI'}}}%%
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Segoe UI","fontSize":"17px","lineColor":"#0D47A1","edgeLabelBackground":"#FFFFFF","primaryTextColor":"#000000","clusterBkg":"#FAFAFA","clusterBorder":"#90A4AE"}}}%%
 flowchart TB
-    classDef scope fill:#D1C4E9,stroke:#4527A0,color:#000
-    classDef proc fill:#FFE0B2,stroke:#E65100,color:#000
-    classDef exp fill:#FFCDD2,stroke:#C62828,color:#000
-    classDef ctx fill:#C8E6C9,stroke:#2E7D32,color:#000
-    classDef be fill:#263238,color:#FFF
+    classDef scope fill:#D1C4E9,stroke:#4527A0,stroke-width:3px,color:#000,font-size:17px,padding:12px
+    classDef proc fill:#FFE0B2,stroke:#E65100,stroke-width:3px,color:#000,font-size:17px,padding:12px
+    classDef exp fill:#FFCDD2,stroke:#C62828,stroke-width:3px,color:#000,font-size:17px,padding:12px
+    classDef ctx fill:#C8E6C9,stroke:#2E7D32,stroke-width:3px,color:#000,font-size:17px,padding:12px
+    classDef be fill:#263238,stroke:#000,stroke-width:3px,color:#FFF,font-size:17px,padding:12px
 
     subgraph AppCode ["Application / Agent Framework"]
       Invoke["InvokeAgentScope"]:::scope
@@ -399,32 +431,37 @@ flowchart TB
     end
 
     subgraph Context ["OpenTelemetry context"]
-      Bag["Baggage<br/>tenant.id / gen_ai.agent.id /<br/>user.name / session.id"]:::ctx
+      Bag["Baggage<br/>tenant.id, gen_ai.agent.id,<br/>user.name, session.id"]:::ctx
       Ctx["Span context"]:::ctx
     end
 
-    subgraph Hosting ["a365/hosting (optional)"]
-      BagMW["baggage_middleware<br/>(sets baggage from request)"]:::ctx
+    subgraph Hosting ["a365 hosting, optional"]
+      BagMW["baggage_middleware<br/>sets baggage from request"]:::ctx
       OutMW["output_logging_middleware"]:::ctx
     end
 
-    A365SP["A365SpanProcessor<br/>baggage → attrs"]:::proc
-    EBSP["_EnrichingBatchSpanProcessor<br/>(enricher + input suppression)"]:::proc
-    Exp["_Agent365Exporter<br/>partition + chunk + sign"]:::exp
+    A365SP["A365 Span Processor<br/>baggage to attrs"]:::proc
+    EBSP["Enriching BatchSpan Processor<br/>enricher and input suppression"]:::proc
+    Exp["Agent365 Exporter<br/>partition, chunk, sign"]:::exp
 
-    Tok["Token resolver<br/>FIC → DefaultAzureCredential<br/>scope override"]:::scope
+    Tok["Token resolver<br/>FIC to DefaultAzureCredential<br/>scope override"]:::scope
 
-    Endpoint[("agent365.svc.cloud.microsoft<br/>(prod / gov / dod / mooncake)")]:::be
+    Endpoint["agent365.svc.cloud.microsoft<br/>prod, gov, dod, mooncake"]:::be
 
-    BagMW --> Bag
-    Invoke -.creates span.-> Ctx
-    Tool -.creates span.-> Ctx
-    Inf -.creates span.-> Ctx
-    Out -.creates span.-> Ctx
+    BagMW ==> Bag
+    Invoke == creates span ==> Ctx
+    Tool == creates span ==> Ctx
+    Inf == creates span ==> Ctx
+    Out == creates span ==> Ctx
 
-    Bag --> A365SP --> Ctx
-    Ctx --> EBSP --> Exp --> Endpoint
-    Tok --> Exp
+    Bag ==> A365SP
+    A365SP ==> Ctx
+    Ctx ==> EBSP
+    EBSP ==> Exp
+    Exp ==> Endpoint
+    Tok ==> Exp
+
+    linkStyle default stroke:#0D47A1,stroke-width:3px,fill:none
 ```
 
 **A365 scopes** (`a365/core/*_scope.py`) are lifecycle helpers that start/end well‑known span shapes (`InvokeAgent`, `ExecuteTool`, `InferenceCall`). They are gated on `ENABLE_OBSERVABILITY` (or `OpenTelemetryScope._enabled_by_distro = True`, set by the distro when `enable_a365=True`).
@@ -436,44 +473,60 @@ flowchart TB
 ## 7. Azure Monitor Subsystem
 
 ```mermaid
-%%{init:{'theme':'base','themeVariables':{'fontFamily':'Segoe UI'}}}%%
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Segoe UI","fontSize":"18px","lineColor":"#0D47A1","edgeLabelBackground":"#FFFFFF","primaryTextColor":"#000000","clusterBkg":"#FAFAFA","clusterBorder":"#90A4AE"}}}%%
 flowchart LR
-    classDef cfg fill:#E1BEE7,stroke:#6A1B9A,color:#000
-    classDef proc fill:#FFE0B2,stroke:#E65100,color:#000
-    classDef exp fill:#FFCDD2,stroke:#C62828,color:#000
-    classDef be fill:#263238,color:#FFF
-    classDef inst fill:#C8E6C9,stroke:#2E7D32,color:#000
+    classDef cfg fill:#E1BEE7,stroke:#6A1B9A,stroke-width:3px,color:#000,font-size:17px,padding:12px
+    classDef sdk fill:#B3E5FC,stroke:#0277BD,stroke-width:3px,color:#000,font-size:17px,padding:12px
+    classDef proc fill:#FFE0B2,stroke:#E65100,stroke-width:3px,color:#000,font-size:17px,padding:12px
+    classDef exp fill:#FFCDD2,stroke:#C62828,stroke-width:3px,color:#000,font-size:17px,padding:12px
+    classDef be fill:#263238,stroke:#000,stroke-width:3px,color:#FFF,font-size:18px,padding:14px
+    classDef inst fill:#C8E6C9,stroke:#2E7D32,stroke-width:3px,color:#000,font-size:17px,padding:12px
 
-    Kwargs["azure_monitor_* kwargs<br/>+ APPLICATIONINSIGHTS_CONNECTION_STRING"]:::cfg
+    Kwargs["azure_monitor kwargs<br/>plus APPLICATIONINSIGHTS_CONNECTION_STRING"]:::cfg
     Cfg["_azure_monitor/_configure.py<br/>_get_configurations"]:::cfg
-    Sampler["Sampler<br/>(fixed % / rate-limited /<br/>parent-based / trace_id_ratio)"]:::cfg
+    Sampler["Sampler<br/>fixed %, rate-limited,<br/>parent-based or trace_id_ratio"]:::cfg
 
-    TP[(TracerProvider)]:::cfg
-    MP[(MeterProvider)]:::cfg
-    LP[(LoggerProvider)]:::cfg
+    TP["TracerProvider"]:::sdk
+    MP["MeterProvider"]:::sdk
+    LP["LoggerProvider"]:::sdk
 
-    QPSP["_QuickpulseSpanProcessor"]:::proc
-    PCSP["_PerformanceCountersSpanProcessor"]:::proc
+    QPSP["Quickpulse Span Processor"]:::proc
+    PCSP["PerfCounters Span Processor"]:::proc
     BSP["BatchSpanProcessor"]:::proc
-    AMTrace["AzureMonitorTraceExporter"]:::exp
-    AMMetric["AzureMonitorMetricExporter"]:::exp
-    AMLog["AzureMonitorLogExporter"]:::exp
-    LiveMetrics["Quickpulse live metrics<br/>enable_live_metrics()"]:::exp
-    PerfMetrics["Performance counters<br/>enable_performance_counters()"]:::exp
-    Browser["Browser SDK loader<br/>(snippet injection)"]:::inst
+    AMTrace["AzureMonitor Trace Exporter"]:::exp
+    AMMetric["AzureMonitor Metric Exporter"]:::exp
+    AMLog["AzureMonitor Log Exporter"]:::exp
+    LiveMetrics["Quickpulse live metrics<br/>enable_live_metrics"]:::exp
+    PerfMetrics["Performance counters<br/>enable_performance_counters"]:::exp
+    Browser["Browser SDK loader<br/>snippet injection"]:::inst
     AzSDK["azure_sdk instrumentation<br/>azure-core-tracing-opentelemetry"]:::inst
 
-    AI[("Application Insights<br/>ingestion endpoint")]:::be
-    QPEP[("Quickpulse endpoint<br/>(live metrics)")]:::be
+    AI["Application Insights<br/>ingestion endpoint"]:::be
+    QPEP["Quickpulse endpoint<br/>live metrics"]:::be
 
-    Kwargs --> Cfg --> Sampler --> TP
-    Cfg --> MP & LP
-    Cfg --> Browser & AzSDK
-    Cfg --> LiveMetrics --> QPEP
-    Cfg --> PerfMetrics
-    TP --> QPSP --> PCSP --> BSP --> AMTrace --> AI
-    MP --> AMMetric --> AI
-    LP --> AMLog --> AI
+    Kwargs ==> Cfg
+    Cfg ==> Sampler
+    Sampler ==> TP
+    Cfg ==> MP
+    Cfg ==> LP
+    Cfg ==> Browser
+    Cfg ==> AzSDK
+    Cfg ==> LiveMetrics
+    LiveMetrics ==> QPEP
+    Cfg ==> PerfMetrics
+
+    TP ==> QPSP
+    QPSP ==> PCSP
+    PCSP ==> BSP
+    BSP ==> AMTrace
+    AMTrace ==> AI
+
+    MP ==> AMMetric
+    AMMetric ==> AI
+    LP ==> AMLog
+    AMLog ==> AI
+
+    linkStyle default stroke:#0D47A1,stroke-width:3px,fill:none
 ```
 
 The Azure Monitor pipeline is invoked from `_distro._append_azure_monitor_components`, which delegates to the vendored `_azure_monitor/_configure.py`. The function returns fully configured providers that already contain **all** previously appended processors (OTLP, A365, Console, Spectra, GenAI main‑agent), avoiding double provider creation.
@@ -483,27 +536,35 @@ The Azure Monitor pipeline is invoked from `_distro._append_azure_monitor_compon
 ## 8. Instrumentation Discovery
 
 ```mermaid
-%%{init:{'theme':'base','themeVariables':{'fontFamily':'Segoe UI'}}}%%
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Segoe UI","fontSize":"17px","lineColor":"#0D47A1","edgeLabelBackground":"#FFFFFF","primaryTextColor":"#000000"}}}%%
 flowchart TB
-    classDef cfg fill:#E1BEE7,stroke:#6A1B9A,color:#000
-    classDef instr fill:#C8E6C9,stroke:#2E7D32,color:#000
-    classDef gate fill:#FFE0B2,stroke:#E65100,color:#000
+    classDef cfg fill:#E1BEE7,stroke:#6A1B9A,stroke-width:3px,color:#000,font-size:17px,padding:12px
+    classDef instr fill:#C8E6C9,stroke:#2E7D32,stroke-width:3px,color:#000,font-size:17px,padding:12px
+    classDef gate fill:#FFE0B2,stroke:#E65100,stroke-width:3px,color:#000,font-size:17px,padding:12px
 
     Setup["_setup_instrumentations"]:::cfg
-    EP["entry_points(group='opentelemetry_instrumentor')"]:::cfg
+    EP["entry_points<br/>group opentelemetry_instrumentor"]:::cfg
     Support["_SUPPORTED_INSTRUMENTED_LIBRARIES filter"]:::gate
-    Opts["instrumentation_options[lib]['enabled']"]:::gate
+    Opts["instrumentation_options lib enabled"]:::gate
     Conflict["get_dist_dependency_conflicts"]:::gate
 
-    A365Path["openai_agents + enable_a365 ?<br/>→ A365OpenAIAgentsInstrumentor"]:::gate
+    A365Path["openai_agents and enable_a365<br/>use A365 OpenAI Agents Instrumentor"]:::gate
 
-    LoadEP["entry_point.load()"]:::instr
-    InstrumentCall[".instrument(skip_dep_check=True, **kwargs)"]:::instr
-    Mark["set_sdkstats_instrumentation_by_name(lib)"]:::cfg
+    LoadEP["entry_point.load"]:::instr
+    InstrumentCall["instrument skip_dep_check True"]:::instr
+    Mark["set_sdkstats_instrumentation_by_name"]:::cfg
 
-    Setup --> EP --> Support --> Opts --> A365Path
-    A365Path -- yes --> Mark
-    A365Path -- no --> Conflict --> LoadEP --> InstrumentCall --> Mark
+    Setup ==> EP
+    EP ==> Support
+    Support ==> Opts
+    Opts ==> A365Path
+    A365Path == yes ==> Mark
+    A365Path == no ==> Conflict
+    Conflict ==> LoadEP
+    LoadEP ==> InstrumentCall
+    InstrumentCall ==> Mark
+
+    linkStyle default stroke:#0D47A1,stroke-width:3px,fill:none
 ```
 
 Distro entry points declared in `pyproject.toml`:
@@ -522,27 +583,31 @@ The Agent Framework / Semantic Kernel / LangChain instrumentors **also** registe
 ## 9. SDKStats (Self‑Telemetry)
 
 ```mermaid
-%%{init:{'theme':'base','themeVariables':{'fontFamily':'Segoe UI'}}}%%
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Segoe UI","fontSize":"17px","lineColor":"#0D47A1","edgeLabelBackground":"#FFFFFF","primaryTextColor":"#000000"}}}%%
 flowchart LR
-    classDef stats fill:#FFE0B2,stroke:#E65100,color:#000
-    classDef cfg fill:#E1BEE7,stroke:#6A1B9A,color:#000
-    classDef be fill:#263238,color:#FFF
+    classDef stats fill:#FFE0B2,stroke:#E65100,stroke-width:3px,color:#000,font-size:17px,padding:12px
+    classDef cfg fill:#E1BEE7,stroke:#6A1B9A,stroke-width:3px,color:#000,font-size:17px,padding:12px
+    classDef be fill:#263238,stroke:#000,stroke-width:3px,color:#FFF,font-size:17px,padding:12px
 
-    Bits["SdkStatsFeature IntFlag<br/>DISTRO, A365_EXPORT,<br/>OTLP_EXPORT, CONSOLE_EXPORT,<br/>SPECTRA_EXPORT, ..."]:::stats
-    InstBits["SdkStatsInstrumentation IntFlag<br/>(per library)"]:::stats
-    Set["set_sdkstats_feature /<br/>set_sdkstats_instrumentation_by_name"]:::cfg
+    Bits["SdkStatsFeature IntFlag<br/>DISTRO, A365_EXPORT,<br/>OTLP_EXPORT, CONSOLE_EXPORT,<br/>SPECTRA_EXPORT"]:::stats
+    InstBits["SdkStatsInstrumentation IntFlag<br/>per library"]:::stats
+    Set["set_sdkstats_feature and<br/>set_sdkstats_instrumentation_by_name"]:::cfg
 
-    Bridge["_bridge_sdkstats_to_azure_monitor<br/>(OR bits into exporter statsbeat)"]:::cfg
-    Standalone["SdkStatsManager.initialize()<br/>standalone MeterProvider"]:::cfg
+    Bridge["_bridge_sdkstats_to_azure_monitor<br/>OR bits into exporter statsbeat"]:::cfg
+    Standalone["SdkStatsManager.initialize<br/>standalone MeterProvider"]:::cfg
 
-    StatsExp["AzureMonitorMetricExporter(is_sdkstats=True)"]:::stats
-    EP[("Statsbeat ingestion endpoint")]:::be
+    StatsExp["AzureMonitor Metric Exporter<br/>is_sdkstats True"]:::stats
+    EP["Statsbeat ingestion endpoint"]:::be
 
-    Bits --> Set
-    InstBits --> Set
-    Set --> Bridge
-    Set --> Standalone --> StatsExp --> EP
-    Bridge --> EP
+    Bits ==> Set
+    InstBits ==> Set
+    Set ==> Bridge
+    Set ==> Standalone
+    Standalone ==> StatsExp
+    StatsExp ==> EP
+    Bridge ==> EP
+
+    linkStyle default stroke:#0D47A1,stroke-width:3px,fill:none
 ```
 
 **Two operating modes:**
@@ -557,21 +622,23 @@ SDKStats can be disabled with `MICROSOFT_OTEL_SDKSTATS_DISABLED=true` or `APPLIC
 ## 10. Configuration Resolution
 
 ```mermaid
-%%{init:{'theme':'base','themeVariables':{'fontFamily':'Segoe UI'}}}%%
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Segoe UI","fontSize":"17px","lineColor":"#0D47A1","edgeLabelBackground":"#FFFFFF","primaryTextColor":"#000000"}}}%%
 flowchart LR
-    classDef k fill:#FFF59D,stroke:#F9A825,color:#000
-    classDef e fill:#C8E6C9,stroke:#2E7D32,color:#000
-    classDef d fill:#CFD8DC,stroke:#455A64,color:#000
-    classDef r fill:#E1BEE7,stroke:#6A1B9A,color:#000
+    classDef k fill:#FFF59D,stroke:#F9A825,stroke-width:3px,color:#000,font-size:17px,padding:12px
+    classDef e fill:#C8E6C9,stroke:#2E7D32,stroke-width:3px,color:#000,font-size:17px,padding:12px
+    classDef d fill:#CFD8DC,stroke:#455A64,stroke-width:3px,color:#000,font-size:17px,padding:12px
+    classDef r fill:#E1BEE7,stroke:#6A1B9A,stroke-width:3px,color:#000,font-size:18px,padding:14px
 
-    K["Explicit kwarg<br/>(highest priority)"]:::k
+    K["Explicit kwarg<br/>highest priority"]:::k
     E["Environment variable"]:::e
     D["Built-in default"]:::d
     R["Resolved value"]:::r
 
-    K -->|wins if set| R
-    E -->|fallback| R
-    D -->|fallback| R
+    K == wins if set ==> R
+    E == fallback ==> R
+    D == fallback ==> R
+
+    linkStyle default stroke:#0D47A1,stroke-width:3px,fill:none
 ```
 
 Examples:
