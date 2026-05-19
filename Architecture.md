@@ -166,14 +166,24 @@ src/microsoft/opentelemetry/
 
 ```mermaid
 %%{init: {
-  'theme':'base',
-  'themeVariables': {
-    'fontFamily':'Segoe UI',
-    'fontSize':'15px',
-    'actorBkg':'#FFF59D','actorBorder':'#F9A825','actorTextColor':'#000',
-    'activationBkgColor':'#E1BEE7','activationBorderColor':'#6A1B9A',
-    'sequenceNumberColor':'#FFFFFF','noteBkgColor':'#FFE0B2','noteBorderColor':'#E65100',
-    'labelBoxBkgColor':'#E1BEE7','labelBoxBorderColor':'#6A1B9A','labelTextColor':'#000'
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "Segoe UI",
+    "fontSize": "16px",
+    "actorBkg": "#FFF59D",
+    "actorBorder": "#F9A825",
+    "actorTextColor": "#000000",
+    "activationBkgColor": "#E1BEE7",
+    "activationBorderColor": "#6A1B9A",
+    "sequenceNumberColor": "#FFFFFF",
+    "noteBkgColor": "#FFE0B2",
+    "noteBorderColor": "#E65100",
+    "noteTextColor": "#000000",
+    "labelBoxBkgColor": "#E1BEE7",
+    "labelBoxBorderColor": "#6A1B9A",
+    "labelTextColor": "#000000",
+    "signalColor": "#0D47A1",
+    "signalTextColor": "#0D47A1"
   }
 }}%%
 sequenceDiagram
@@ -186,32 +196,39 @@ sequenceDiagram
     participant Inst as Instrumentors
     participant Stats as SDKStats
 
-    Note over User,API: use_microsoft_opentelemetry(**kwargs)
-    User->>API: kwargs
-    API->>Cfg: resolve (kwargs > env > defaults)
+    Note over User,API: use_microsoft_opentelemetry(kwargs)
+    User->>+API: kwargs
+    API->>+Cfg: resolve config
+    Note right of Cfg: precedence: kwargs, env, defaults
 
-    Note over Cfg: A365 without AM<br/>disables web/HTTP instrumentors
-    Note over Cfg,Exp: Prepend GenAI MainAgent processors<br/>(when Azure Monitor enabled)
+    Note over Cfg: A365 without Azure Monitor disables web and HTTP instrumentors
+    Note over Cfg,Exp: Prepend GenAI MainAgent processors when Azure Monitor is on
 
-    Cfg->>Exp: append OTLP processors (if OTEL_EXPORTER_OTLP_*_ENDPOINT)
-    Cfg->>Exp: append Spectra OTLP (gRPC, HTTP fallback)
+    Cfg->>Exp: append OTLP
+    Note right of Exp: enabled by any OTEL_EXPORTER_OTLP endpoint
+    Cfg->>Exp: append Spectra OTLP
+    Note right of Exp: gRPC preferred, HTTP fallback
     Cfg->>Exp: register A365 baggage processor
-    Cfg->>Exp: add A365 batch exporter (if enabled)
-    Cfg->>Exp: append Console processors (auto-on if no other exporter)
+    Cfg->>Exp: add A365 batch exporter
+    Note right of Exp: only when A365 exporter enabled
+    Cfg->>Exp: append Console
+    Note right of Exp: auto-on when no other exporter
 
-    alt enable_azure_monitor = True
-        Cfg->>Prov: Azure Monitor builds Tracer / Meter / Logger Providers
-        Note right of Prov: Includes ALL appended processors<br/>+ AM exporter, Live Metrics, PerfCounters
-        Prov-->>Cfg: providers
-    else
-        Cfg->>Prov: build bare providers from appended processors
+    alt enable_azure_monitor true
+        Cfg->>+Prov: AM builds Tracer, Meter, Logger
+        Note right of Prov: includes all processors plus AM exporter, Live Metrics, Perf Counters
+        Prov-->>-Cfg: providers
+    else no Azure Monitor
+        Cfg->>Prov: build bare providers
     end
 
-    Cfg->>Prov: set global Tracer / Meter / Logger providers
-    Cfg->>Inst: load supported opentelemetry_instrumentor entry points
-    Note over Inst: openai_agents uses A365 path<br/>when enable_a365 = True
-    Cfg->>Stats: bridge bits into AM statsbeat OR start standalone manager
-    Cfg-->>User: ready
+    Cfg->>Prov: set global providers
+    Cfg->>+Inst: load entry points
+    Note right of Inst: openai_agents uses A365 path when enable_a365 is true
+    Inst-->>-Cfg: instrumented
+    Cfg->>Stats: start or bridge statsbeat
+    Cfg-->>-API: configured
+    API-->>-User: ready
 ```
 
 ### Pipeline composition rules
