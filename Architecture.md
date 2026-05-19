@@ -165,40 +165,53 @@ src/microsoft/opentelemetry/
 `use_microsoft_opentelemetry(**kwargs)` in `_distro.py` orchestrates everything. The composition order matters: processors prepended earliest see spans first and contribute attributes that later batch‑exporters serialize.
 
 ```mermaid
-%%{init:{'theme':'base','themeVariables':{'fontFamily':'Segoe UI'}}}%%
+%%{init: {
+  'theme':'base',
+  'themeVariables': {
+    'fontFamily':'Segoe UI',
+    'fontSize':'15px',
+    'actorBkg':'#FFF59D','actorBorder':'#F9A825','actorTextColor':'#000',
+    'activationBkgColor':'#E1BEE7','activationBorderColor':'#6A1B9A',
+    'sequenceNumberColor':'#FFFFFF','noteBkgColor':'#FFE0B2','noteBorderColor':'#E65100',
+    'labelBoxBkgColor':'#E1BEE7','labelBoxBorderColor':'#6A1B9A','labelTextColor':'#000'
+  }
+}}%%
 sequenceDiagram
     autonumber
     actor User
-    participant API as use_microsoft_opentelemetry
-    participant Cfg as _distro.py
-    participant GenAI as GenAI MainAgent Processor
-    participant OTLP as _append_otlp_components
-    participant Spec as _append_spectra_components
-    participant A365 as _append_a365_components
-    participant Con as _append_console_components
-    participant AM as _append_azure_monitor_components
-    participant Inst as _setup_instrumentations
-    participant Stats as SdkStatsManager
+    participant API as API
+    participant Cfg as Distro
+    participant Exp as Exporters
+    participant Prov as Providers
+    participant Inst as Instrumentors
+    participant Stats as SDKStats
 
-    User->>API: kwargs (enable_azure_monitor, enable_a365, ...)
-    API->>Cfg: pop & resolve flags (kwargs > env > defaults)
-    Cfg->>Cfg: if enable_a365 and not enable_azure_monitor:<br/>disable web/HTTP instrumentations
-    Cfg->>GenAI: prepend GenAIMainAgent SpanProcessor + LogRecordProcessor (AM only)
-    Cfg->>OTLP: append OTLP processors if any OTEL_EXPORTER_OTLP_*_ENDPOINT set
-    Cfg->>Spec: append Spectra BatchSpanProcessor (gRPC pref / HTTP fallback)
-    Cfg->>A365: register baggage A365SpanProcessor +<br/>(if exporter enabled) EnrichingBatchSpanProcessor → _Agent365Exporter
-    Cfg->>Con: append Console processors (auto-on if no other exporter)
-    alt enable_azure_monitor=True
-        Cfg->>AM: AM builds TracerProvider/MeterProvider/LoggerProvider<br/>with ALL appended processors + AM exporter + Live Metrics + PerfCounters
-        AM-->>Cfg: providers
+    Note over User,API: use_microsoft_opentelemetry(**kwargs)
+    User->>API: kwargs
+    API->>Cfg: resolve (kwargs > env > defaults)
+
+    Note over Cfg: A365 without AM<br/>disables web/HTTP instrumentors
+    Note over Cfg,Exp: Prepend GenAI MainAgent processors<br/>(when Azure Monitor enabled)
+
+    Cfg->>Exp: append OTLP processors (if OTEL_EXPORTER_OTLP_*_ENDPOINT)
+    Cfg->>Exp: append Spectra OTLP (gRPC, HTTP fallback)
+    Cfg->>Exp: register A365 baggage processor
+    Cfg->>Exp: add A365 batch exporter (if enabled)
+    Cfg->>Exp: append Console processors (auto-on if no other exporter)
+
+    alt enable_azure_monitor = True
+        Cfg->>Prov: Azure Monitor builds Tracer / Meter / Logger Providers
+        Note right of Prov: Includes ALL appended processors<br/>+ AM exporter, Live Metrics, PerfCounters
+        Prov-->>Cfg: providers
     else
-        Cfg->>Cfg: _setup_tracing / _setup_metrics / _setup_logging<br/>build bare providers with appended processors
+        Cfg->>Prov: build bare providers from appended processors
     end
-    Cfg->>Cfg: set_tracer_provider / set_meter_provider / set_logger_provider
-    Cfg->>Inst: load opentelemetry_instrumentor entry points<br/>(supported set only)
-    Inst->>Inst: A365-specific path for openai_agents when enable_a365=True
+
+    Cfg->>Prov: set global Tracer / Meter / Logger providers
+    Cfg->>Inst: load supported opentelemetry_instrumentor entry points
+    Note over Inst: openai_agents uses A365 path<br/>when enable_a365 = True
     Cfg->>Stats: bridge bits into AM statsbeat OR start standalone manager
-    Cfg-->>User: providers configured, instrumentation active
+    Cfg-->>User: ready
 ```
 
 ### Pipeline composition rules
